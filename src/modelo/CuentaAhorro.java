@@ -1,7 +1,15 @@
 package modelo;
 
-import java.io.Serializable;
+public class CuentaAhorro extends Cuenta {
 
-public class CuentaAhorro extends Cuenta implements Serializable{
+    private double tasaInteres;
 
+    public CuentaAhorro(String numeroCuenta, double tasaInteres) {
+        super(numeroCuenta);
+        this.tasaInteres = tasaInteres;
+    }
+
+    public double calcularInteres() {
+        return saldo * tasaInteres;
+    }
 }

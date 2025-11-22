@@ -1,5 +1,16 @@
 package modelo;
 
-import java.io.Serializable;
-public class CuentaRut extends Cuenta implements Serializable {
+public class CuentaRut extends Cuenta {
+
+    private boolean activa = true;
+
+    public CuentaRut(String numeroCuenta) {
+        super(numeroCuenta);
+    }
+
+    public void bloquearCuenta() {
+        activa = false;
+    }
+
+    public boolean isActiva() { return activa; }
 }
