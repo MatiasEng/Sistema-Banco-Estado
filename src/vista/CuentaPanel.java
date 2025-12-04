@@ -1,20 +1,20 @@
 package vista;
 
 import controlador.ControladorBancoEstado;
-import modelo.Cliente;
-import modelo.Cuenta;
-import modelo.CuentaAhorro;
-import modelo.CuentaCorriente;
-import modelo.CuentaRut;
+import modelo.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 
 public class CuentaPanel extends JPanel {
+
     private ControladorBancoEstado controlador;
 
     private JComboBox<String> cbClientes;
+    private JComboBox<String> cbSucursales;
+    private JComboBox<String> cbEmpleados;
+
     private JTextField tfNumero;
     private JComboBox<String> cbTipo;
     private JTextField tfExtra; // tasa o linea
@@ -26,44 +26,61 @@ public class CuentaPanel extends JPanel {
         this.controlador = controlador;
         initUI();
         cargarClientes();
+        cargarSucursales();
     }
 
     private void initUI() {
+
         setLayout(new BorderLayout());
 
-        JPanel form = new JPanel(new GridLayout(5,2,6,6));
+        JPanel form = new JPanel(new GridLayout(7, 2, 6, 6));
         form.setBorder(BorderFactory.createTitledBorder("Crear Cuenta"));
-        cbClientes = new JComboBox<>();
-        tfNumero = new JTextField();
-        cbTipo = new JComboBox<>(new String[]{"CuentaAhorro","CuentaCorriente","CuentaRut"});
-        tfExtra = new JTextField(); // tasa o lineaCredito
 
+        cbClientes = new JComboBox<>();
+        cbSucursales = new JComboBox<>();
+        cbEmpleados = new JComboBox<>();
+
+        tfNumero = new JTextField();
+        cbTipo = new JComboBox<>(new String[]{"CuentaAhorro", "CuentaCorriente", "CuentaRut"});
+        tfExtra = new JTextField();
+
+        // ----- FORMULARIO -----
         form.add(new JLabel("Cliente:"));
         form.add(cbClientes);
+
+        form.add(new JLabel("Sucursal:"));
+        form.add(cbSucursales);
+
+        form.add(new JLabel("Ejecutivo:"));
+        form.add(cbEmpleados);
+
         form.add(new JLabel("N° Cuenta:"));
         form.add(tfNumero);
+
         form.add(new JLabel("Tipo:"));
         form.add(cbTipo);
-        form.add(new JLabel("Tasa/Linea (opcional):"));
+
+        form.add(new JLabel("Tasa / Línea (opcional):"));
         form.add(tfExtra);
 
-
-
+        // BOTÓN
         JButton btnCrear = new JButton("Crear Cuenta");
         btnCrear.addActionListener(e -> onCrearCuenta());
-        form.add(new JLabel());   // celda vacía
-        form.add(btnCrear);       // botón alineado como en sucursal
 
-        // AGREGAR FORMULARIO ARRIBA
+        form.add(new JLabel());
+        form.add(btnCrear);
+
         add(form, BorderLayout.NORTH);
 
+        // ----- LISTA -----
         modelCuentas = new DefaultListModel<>();
         listCuentas = new JList<>(modelCuentas);
-        JScrollPane sc = new JScrollPane(listCuentas);
-        sc.setBorder(BorderFactory.createTitledBorder("Cuentas (seleccionar para acciones)"));
-        add(sc, BorderLayout.SOUTH);
 
-        // Popup menu para depositar/retirar
+        JScrollPane sc = new JScrollPane(listCuentas);
+        sc.setBorder(BorderFactory.createTitledBorder("Cuentas Registradas"));
+        add(sc, BorderLayout.CENTER);
+
+        // ----- MENU CONTEXTUAL -----
         JPopupMenu menu = new JPopupMenu();
         JMenuItem miDepositar = new JMenuItem("Depositar");
         JMenuItem miRetirar = new JMenuItem("Retirar");
@@ -74,113 +91,190 @@ public class CuentaPanel extends JPanel {
         menu.add(miDepositar);
         menu.add(miRetirar);
         listCuentas.setComponentPopupMenu(menu);
+
+        // Evento: cuando cambie la sucursal → cargar empleados
+        cbSucursales.addActionListener(e -> cargarEmpleados());
     }
 
-    private void cargarClientes() {
+    // ====================================
+    // CARGA COMBOBOX CLIENTES
+    // ====================================
+    void cargarClientes() {
         cbClientes.removeAllItems();
-        List<Cliente> clientes = controlador.getClientes();
+
+        List<Cliente> clientes = controlador.getClientesActualizados();
+
         for (Cliente c : clientes) {
             cbClientes.addItem(c.getNombre() + " - " + c.getRut());
         }
+
         refrescarCuentas();
     }
 
+    // ====================================
+    // CARGA SUCURSALES
+    // ====================================
+    void cargarSucursales() {
+        cbSucursales.removeAllItems();
+
+        List<Sucursal> sucursales = controlador.getSucursalesActualizadas();
+        for (Sucursal s : sucursales) {
+            cbSucursales.addItem(s.getCodigo() + " - " + s.getDireccion());
+        }
+
+        cargarEmpleados();
+    }
+
+    private void cargarEmpleados() {
+        cbEmpleados.removeAllItems();
+
+        int idx = cbSucursales.getSelectedIndex();
+        if (idx < 0) return;
+
+        Sucursal suc = controlador.getSucursalesActualizadas().get(idx);
+
+        for (Empleado emp : suc.getEmpleados()) {
+            cbEmpleados.addItem(emp.getNombre() + " - " + emp.getRut());
+        }
+    }
+
+    // ====================================
+    // CREAR CUENTA
+    // ====================================
     private void onCrearCuenta() {
-        int sel = cbClientes.getSelectedIndex();
-        if (sel < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona un cliente.");
+
+        int selCliente = cbClientes.getSelectedIndex();
+        int selSucursal = cbSucursales.getSelectedIndex();
+        int selEmpleado = cbEmpleados.getSelectedIndex();
+
+        if (selCliente < 0 || selSucursal < 0 || selEmpleado < 0) {
+            JOptionPane.showMessageDialog(this, "Debes seleccionar cliente, sucursal y ejecutivo.");
             return;
         }
-        List<Cliente> clientes = controlador.getClientes();
-        Cliente c = clientes.get(sel);
+
+        Cliente cliente = controlador.getClientesActualizados().get(selCliente);
+        Sucursal sucursal = controlador.getSucursalesActualizadas().get(selSucursal);
+        Empleado ejecutivo = sucursal.getEmpleados().get(selEmpleado);
+
         String numero = tfNumero.getText().trim();
-        String tipo = (String) cbTipo.getSelectedItem();
-        String extra = tfExtra.getText().trim();
         if (numero.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Ingresa número de cuenta.");
             return;
         }
 
+        String tipo = (String) cbTipo.getSelectedItem();
+        String extra = tfExtra.getText().trim();
+
         Cuenta created = null;
+
         switch (tipo) {
             case "CuentaAhorro":
                 double tasa = 0.01;
                 if (!extra.isEmpty()) {
-                    try { tasa = Double.parseDouble(extra); } catch (NumberFormatException ex) {}
+                    try { tasa = Double.parseDouble(extra); } catch (NumberFormatException ignored) {}
                 }
-                created = controlador.crearCuentaAhorro(c, numero, tasa);
+                created = controlador.crearCuentaAhorro(cliente, numero, tasa, sucursal, ejecutivo);
                 break;
+
             case "CuentaCorriente":
-                double linea = 0.0;
+                double linea = 0;
                 if (!extra.isEmpty()) {
-                    try { linea = Double.parseDouble(extra); } catch (NumberFormatException ex) {}
+                    try { linea = Double.parseDouble(extra); } catch (NumberFormatException ignored) {}
                 }
-                created = controlador.crearCuentaCorriente(c, numero, linea);
+                created = controlador.crearCuentaCorriente(cliente, numero, linea, sucursal, ejecutivo);
                 break;
+
             case "CuentaRut":
-                created = controlador.crearCuentaRut(c, numero);
+                created = controlador.crearCuentaRut(cliente, numero, sucursal, ejecutivo);
                 break;
         }
-        JOptionPane.showMessageDialog(this, "Cuenta creada: " + created.getNumeroCuenta());
+
+        JOptionPane.showMessageDialog(this, "Cuenta creada correctamente.");
+
         tfNumero.setText("");
         tfExtra.setText("");
+
         refrescarCuentas();
     }
 
+    // ====================================
+    // REFRESCAR LISTA DE CUENTAS
+    // ====================================
     private void refrescarCuentas() {
         modelCuentas.clear();
-        List<Cliente> clientes = controlador.getClientes();
+
+        List<Cliente> clientes = controlador.getClientesActualizados();
+
         for (Cliente c : clientes) {
             for (Cuenta cu : c.getCuentas()) {
-                modelCuentas.addElement(c.getNombre() + " | " + cu.getNumeroCuenta() + " | Saldo: " + cu.getSaldo());
+
+                String suc = cu.getSucursal() != null ? cu.getSucursal().getCodigo() : "N/A";
+                String emp = cu.getEjecutivo() != null ? cu.getEjecutivo().getNombre() : "N/A";
+
+                modelCuentas.addElement(
+                        c.getNombre() + " | " + cu.getNumeroCuenta() +
+                                " | Sucursal: " + suc +
+                                " | Ejecutivo: " + emp +
+                                " | Saldo: " + cu.getSaldo()
+                );
             }
         }
     }
 
+    // ====================================
+    // DEPÓSITOS / RETIROS
+    // ====================================
     private void operarCuenta(boolean depositar) {
+
         int idx = listCuentas.getSelectedIndex();
         if (idx < 0) {
             JOptionPane.showMessageDialog(this, "Selecciona una cuenta.");
             return;
         }
-        // Encontrar cuenta por índice (misma lógica que refrescar)
-        int counter = -1;
+
+        // Buscar cuenta por índice
         Cuenta target = null;
         Cliente owner = null;
-        for (Cliente c : controlador.getClientes()) {
+        int counter = -1;
+
+        for (Cliente c : controlador.getClientesActualizados()) {
             for (Cuenta cu : c.getCuentas()) {
                 counter++;
                 if (counter == idx) {
                     target = cu;
                     owner = c;
-                    break;
                 }
             }
-            if (target != null) break;
         }
+
         if (target == null) return;
 
-        String sMonto = JOptionPane.showInputDialog(this, (depositar ? "Monto a depositar:" : "Monto a retirar:"));
-        if (sMonto == null || sMonto.trim().isEmpty()) return;
-        double monto;
-        try { monto = Double.parseDouble(sMonto); } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Monto inválido.");
-            return;
-        }
+        String inp = JOptionPane.showInputDialog(this,
+                depositar ? "Monto a depositar:" : "Monto a retirar:");
 
-        if (depositar) {
-            target.depositar(monto);
-            controlador.guardarClientes(); // método existe en controlador
-            JOptionPane.showMessageDialog(this, "Depósito realizado.");
-        } else {
-            boolean ok = target.retirar(monto);
-            if (ok) {
+        if (inp == null || inp.trim().isEmpty()) return;
+
+        try {
+
+            double monto = Double.parseDouble(inp);
+
+            if (depositar) {
+                target.depositar(monto);
                 controlador.guardarClientes();
-                JOptionPane.showMessageDialog(this, "Retiro realizado.");
+                JOptionPane.showMessageDialog(this, "Depósito realizado.");
             } else {
-                JOptionPane.showMessageDialog(this, "Saldo insuficiente.");
+                if (target.retirar(monto)) {
+                    controlador.guardarClientes();
+                    JOptionPane.showMessageDialog(this, "Retiro realizado.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Saldo insuficiente.");
+                }
             }
+
+            refrescarCuentas();
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Monto inválido.");
         }
-        refrescarCuentas();
     }
 }

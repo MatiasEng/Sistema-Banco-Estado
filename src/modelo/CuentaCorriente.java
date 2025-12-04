@@ -19,5 +19,7 @@ public class CuentaCorriente extends Cuenta {
         return false;
     }
 
-    public double getLineaCredito() { return lineaCredito; }
+    public double getLineaCredito() {
+        return lineaCredito;
+    }
 }

@@ -12,5 +12,7 @@ public class CuentaRut extends Cuenta {
         activa = false;
     }
 
-    public boolean isActiva() { return activa; }
+    public boolean isActiva() {
+        return activa;
+    }
 }

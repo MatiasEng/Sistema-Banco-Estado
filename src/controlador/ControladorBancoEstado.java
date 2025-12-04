@@ -5,7 +5,8 @@ import modelo.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ControladorBancoEstado implements Serializable{
+public class ControladorBancoEstado implements Serializable {
+
     private static ControladorBancoEstado instance = null;
 
     public static ControladorBancoEstado getInstance() {
@@ -26,9 +27,22 @@ public class ControladorBancoEstado implements Serializable{
         sucursales = cargarSucursales();
     }
 
-    // ------------------------
-    // Clientes
-    // ------------------------
+    // ===============================
+    // ACTUALIZACIONES
+    // ===============================
+    public List<Cliente> getClientesActualizados() {
+        clientes = cargarClientes();
+        return clientes;
+    }
+
+    public List<Sucursal> getSucursalesActualizadas() {
+        sucursales = cargarSucursales();
+        return sucursales;
+    }
+
+    // ===============================
+    // CLIENTES
+    // ===============================
     public Cliente crearCliente(String nombre, String rut) {
         Cliente c = new Cliente(nombre, rut);
         clientes.add(c);
@@ -43,9 +57,9 @@ public class ControladorBancoEstado implements Serializable{
                 .orElse(null);
     }
 
-    // ------------------------
-    // Sucursales
-    // ------------------------
+    // ===============================
+    // SUCURSALES
+    // ===============================
     public Sucursal crearSucursal(String codigo, String direccion) {
         Sucursal s = new Sucursal(codigo, direccion);
         sucursales.add(s);
@@ -59,41 +73,85 @@ public class ControladorBancoEstado implements Serializable{
         guardarSucursales();
     }
 
-    public List<Sucursal> getSucursales() {
-        return sucursales;
-    }
+    public List<Sucursal> getSucursales() { return sucursales; }
+    public List<Cliente> getClientes() { return clientes; }
 
-    public List<Cliente> getClientes() {
-        return clientes;
-    }
+    // ===============================
+    // CUENTAS (ARREGLADO)
+    // ===============================
+    public Cuenta crearCuentaCorriente(Cliente cliente, String numero, double linea,
+                                       Sucursal sucursal, Empleado ejecutivo) {
 
-    // ------------------------
-    // Cuentas
-    // ------------------------
-    public Cuenta crearCuentaCorriente(Cliente c, String numero, double lineaCredito) {
-        CuentaCorriente cc = new CuentaCorriente(numero, lineaCredito);
-        c.agregarCuenta(cc);
+        CuentaCorriente cc = new CuentaCorriente(numero, linea);
+        cc.setSucursal(sucursal);
+        cc.setEjecutivo(ejecutivo);
+
+        cliente.agregarCuenta(cc);
         guardarClientes();
+
+        generarContrato(cliente, cc, sucursal, ejecutivo);
         return cc;
     }
 
-    public Cuenta crearCuentaAhorro(Cliente c, String numero, double tasa) {
+    public Cuenta crearCuentaAhorro(Cliente cliente, String numero, double tasa,
+                                    Sucursal sucursal, Empleado ejecutivo) {
+
         CuentaAhorro ca = new CuentaAhorro(numero, tasa);
-        c.agregarCuenta(ca);
+        ca.setSucursal(sucursal);
+        ca.setEjecutivo(ejecutivo);
+
+        cliente.agregarCuenta(ca);
         guardarClientes();
+
+        generarContrato(cliente, ca, sucursal, ejecutivo);
         return ca;
     }
 
-    public Cuenta crearCuentaRut(Cliente c, String numero) {
+    public Cuenta crearCuentaRut(Cliente cliente, String numero,
+                                 Sucursal sucursal, Empleado ejecutivo) {
+
         CuentaRut cr = new CuentaRut(numero);
-        c.agregarCuenta(cr);
+        cr.setSucursal(sucursal);
+        cr.setEjecutivo(ejecutivo);
+
+        cliente.agregarCuenta(cr);
         guardarClientes();
+
+        generarContrato(cliente, cr, sucursal, ejecutivo);
         return cr;
     }
 
-    // ------------------------
-    // Persistencia
-    // ------------------------
+    // ===============================
+    // CONTRATO (FUNCIONANDO)
+    // ===============================
+    private void generarContrato(Cliente c, Cuenta cuenta, Sucursal suc, Empleado e) {
+
+        String dirName = "contratos";
+        File dir = new File(dirName);
+        if (!dir.exists()) dir.mkdir();
+
+        String fileName = "ContratoCuenta-" + cuenta.getNumeroCuenta() + ".txt";
+        File archivo = new File(dir, fileName);
+
+        try (PrintWriter pw = new PrintWriter(new FileWriter(archivo))) {
+
+            pw.println("=== CONTRATO DE APERTURA DE CUENTA ===\n");
+            pw.println("Cliente: " + c.getNombre() + " (" + c.getRut() + ")");
+            pw.println("Sucursal: " + suc.getCodigo() + " - " + suc.getDireccion());
+            pw.println("Ejecutivo: " + e.getNombre() + " (" + e.getRut() + ")");
+            pw.println("Tipo de cuenta: " + cuenta.getClass().getSimpleName());
+            pw.println("Número de cuenta: " + cuenta.getNumeroCuenta());
+            pw.println("Fecha: " + java.time.LocalDate.now());
+            pw.println("--------------------------------------");
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    // ===============================
+    // PERSISTENCIA
+    // ===============================
     public void guardarClientes() {
         guardarObjeto(archivoClientes, clientes);
     }
@@ -110,7 +168,6 @@ public class ControladorBancoEstado implements Serializable{
         return (List<Sucursal>) cargarObjeto(archivoSucursales, new ArrayList<>());
     }
 
-    // Uso genérico de persistencia
     private void guardarObjeto(String archivo, Object data) {
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(archivo))) {
             out.writeObject(data);
@@ -130,6 +187,4 @@ public class ControladorBancoEstado implements Serializable{
             return valorPorDefecto;
         }
     }
-
-
 }

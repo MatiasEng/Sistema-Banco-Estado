@@ -12,4 +12,8 @@ public class CuentaAhorro extends Cuenta {
     public double calcularInteres() {
         return saldo * tasaInteres;
     }
+
+    public double getTasaInteres() {
+        return tasaInteres;
+    }
 }
