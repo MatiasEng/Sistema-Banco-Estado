@@ -30,69 +30,59 @@ public class CuentaPanel extends JPanel {
     }
 
     private void initUI() {
-
         setLayout(new BorderLayout());
-
         JPanel form = new JPanel(new GridLayout(7, 2, 6, 6));
         form.setBorder(BorderFactory.createTitledBorder("Crear Cuenta"));
 
         cbClientes = new JComboBox<>();
         cbSucursales = new JComboBox<>();
         cbEmpleados = new JComboBox<>();
-
         tfNumero = new JTextField();
         cbTipo = new JComboBox<>(new String[]{"CuentaAhorro", "CuentaCorriente", "CuentaRut"});
         tfExtra = new JTextField();
 
-        // ----- FORMULARIO -----
-        form.add(new JLabel("Cliente:"));
-        form.add(cbClientes);
+        form.add(new JLabel("Cliente:")); form.add(cbClientes);
+        form.add(new JLabel("Sucursal:")); form.add(cbSucursales);
+        form.add(new JLabel("Ejecutivo:")); form.add(cbEmpleados);
+        form.add(new JLabel("N° Cuenta:")); form.add(tfNumero);
+        form.add(new JLabel("Tipo:")); form.add(cbTipo);
+        form.add(new JLabel("Tasa / Línea (opcional):")); form.add(tfExtra);
 
-        form.add(new JLabel("Sucursal:"));
-        form.add(cbSucursales);
-
-        form.add(new JLabel("Ejecutivo:"));
-        form.add(cbEmpleados);
-
-        form.add(new JLabel("N° Cuenta:"));
-        form.add(tfNumero);
-
-        form.add(new JLabel("Tipo:"));
-        form.add(cbTipo);
-
-        form.add(new JLabel("Tasa / Línea (opcional):"));
-        form.add(tfExtra);
-
-        // BOTÓN
         JButton btnCrear = new JButton("Crear Cuenta");
         btnCrear.addActionListener(e -> onCrearCuenta());
-
-        form.add(new JLabel());
-        form.add(btnCrear);
+        form.add(new JLabel()); form.add(btnCrear);
 
         add(form, BorderLayout.NORTH);
 
-        // ----- LISTA -----
+        // --- LISTA CENTRAL ---
         modelCuentas = new DefaultListModel<>();
         listCuentas = new JList<>(modelCuentas);
-
         JScrollPane sc = new JScrollPane(listCuentas);
         sc.setBorder(BorderFactory.createTitledBorder("Cuentas Registradas"));
         add(sc, BorderLayout.CENTER);
 
-        // ----- MENU CONTEXTUAL -----
+
         JPopupMenu menu = new JPopupMenu();
+
         JMenuItem miDepositar = new JMenuItem("Depositar");
         JMenuItem miRetirar = new JMenuItem("Retirar");
 
+
+        JMenuItem miTransferir = new JMenuItem("Transferir");
+
+
         miDepositar.addActionListener(a -> operarCuenta(true));
         miRetirar.addActionListener(a -> operarCuenta(false));
+        miTransferir.addActionListener(a -> onTransferir());
+
 
         menu.add(miDepositar);
         menu.add(miRetirar);
+        menu.addSeparator();
+        menu.add(miTransferir);
+
         listCuentas.setComponentPopupMenu(menu);
 
-        // Evento: cuando cambie la sucursal → cargar empleados
         cbSucursales.addActionListener(e -> cargarEmpleados());
     }
 
@@ -275,6 +265,51 @@ public class CuentaPanel extends JPanel {
 
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Monto inválido.");
+        }
+    }
+    private void onTransferir() {
+        // 1. Obtener la cuenta seleccionada en la lista (la tuya)
+        int idx = listCuentas.getSelectedIndex();
+        if (idx < 0) {
+            JOptionPane.showMessageDialog(this, "Selecciona de la lista la cuenta de origen.");
+            return;
+        }
+
+        // Truco para obtener el objeto Cuenta desde la lista visual
+        Cuenta cuentaOrigen = null;
+        int count = 0;
+        for (Cliente c : controlador.getClientesActualizados()) {
+            for (Cuenta cu : c.getCuentas()) {
+                if (count == idx) cuentaOrigen = cu;
+                count++;
+            }
+        }
+
+        if (cuentaOrigen == null) return;
+
+        // 2. Pedir datos de destino
+        String numDestino = JOptionPane.showInputDialog(this,
+                "Origen: " + cuentaOrigen.getNumeroCuenta() + "\n\nIngresa el N° de cuenta destino:");
+        if (numDestino == null || numDestino.isEmpty()) return;
+
+        String montoStr = JOptionPane.showInputDialog(this, "Monto a transferir:");
+        if (montoStr == null) return;
+
+        try {
+            double monto = Double.parseDouble(montoStr);
+
+            // 3. Llamar al controlador
+            boolean exito = controlador.transferir(cuentaOrigen.getNumeroCuenta(), numDestino, monto);
+
+            if (exito) {
+                JOptionPane.showMessageDialog(this, "Transferencia realizada con éxito.");
+                refrescarCuentas(); // Actualiza la lista para ver el nuevo saldo
+            } else {
+                JOptionPane.showMessageDialog(this, "Error: Saldo insuficiente o cuenta destino no existe.");
+            }
+
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "El monto debe ser un número.");
         }
     }
 }

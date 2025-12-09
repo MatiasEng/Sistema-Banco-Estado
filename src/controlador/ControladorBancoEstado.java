@@ -77,7 +77,7 @@ public class ControladorBancoEstado implements Serializable {
     public List<Cliente> getClientes() { return clientes; }
 
     // ===============================
-    // CUENTAS (ARREGLADO)
+    // CUENTAS
     // ===============================
     public Cuenta crearCuentaCorriente(Cliente cliente, String numero, double linea,
                                        Sucursal sucursal, Empleado ejecutivo) {
@@ -122,7 +122,7 @@ public class ControladorBancoEstado implements Serializable {
     }
 
     // ===============================
-    // CONTRATO (FUNCIONANDO)
+    // CONTRATO
     // ===============================
     private void generarContrato(Cliente c, Cuenta cuenta, Sucursal suc, Empleado e) {
 
@@ -186,5 +186,33 @@ public class ControladorBancoEstado implements Serializable {
             System.out.println("Error al cargar " + archivo + ": " + e.getMessage());
             return valorPorDefecto;
         }
+    }
+
+    public Cuenta buscarCuentaGlobal(String numeroCuenta) {
+        for (Cliente c : clientes) {
+            for (Cuenta cuenta : c.getCuentas()) {
+                if (cuenta.getNumeroCuenta().equals(numeroCuenta)) {
+                    return cuenta;
+                }
+            }
+        }
+        return null; // No la encontró
+    }
+
+    public boolean transferir(String numOrigen, String numDestino, double monto) {
+        Cuenta origen = buscarCuentaGlobal(numOrigen);
+        Cuenta destino = buscarCuentaGlobal(numDestino);
+
+        if (origen == null || destino == null) return false;
+        if (origen == destino) return false; // No transferirse a sí mismo
+
+
+        if (origen.retirar(monto)) {
+            destino.depositar(monto);
+            guardarClientes();
+            return true;
+        }
+
+        return false; // No tenía saldo suficiente
     }
 }
