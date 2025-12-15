@@ -6,12 +6,10 @@ public class Empleado implements Serializable {
 
     private String nombre;
     private String rut;
-    private String cargo;
 
-    public Empleado(String nombre, String rut, String cargo) {
+    public Empleado(String nombre, String rut) {
         this.nombre = nombre;
         this.rut = rut;
-        this.cargo = cargo;
     }
 
     public String getNombre() {
@@ -22,8 +20,5 @@ public class Empleado implements Serializable {
         return rut;
     }
 
-    public String getCargo() {
-        return cargo;
-    }
 }
 

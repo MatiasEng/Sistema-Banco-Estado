@@ -7,7 +7,7 @@ import java.util.List;
 
 public class ControladorBancoEstado implements Serializable {
 
-    private static ControladorBancoEstado instance = null;
+    private static ControladorBancoEstado instance;
 
     public static ControladorBancoEstado getInstance() {
         if (instance == null) {
@@ -22,7 +22,7 @@ public class ControladorBancoEstado implements Serializable {
     private final String archivoClientes = "clientes.dat";
     private final String archivoSucursales = "sucursales.dat";
 
-    public ControladorBancoEstado() {
+    private ControladorBancoEstado() {
         clientes = cargarClientes();
         sucursales = cargarSucursales();
     }
@@ -49,13 +49,15 @@ public class ControladorBancoEstado implements Serializable {
         guardarClientes();
         return c;
     }
-
-    public Cliente buscarCliente(String rut) {
-        return clientes.stream()
-                .filter(c -> c.getRut().equals(rut))
-                .findFirst()
-                .orElse(null);
+    public Cliente buscarClientePorCuenta(Cuenta cuenta) {
+        for (Cliente c : clientes) {
+            if (c.getCuentas().contains(cuenta)) {
+                return c;
+            }
+        }
+        return null;
     }
+
 
     // ===============================
     // SUCURSALES
@@ -67,84 +69,136 @@ public class ControladorBancoEstado implements Serializable {
         return s;
     }
 
-    public void agregarEmpleadoASucursal(Sucursal s, String nombre, String rut, String cargo) {
-        Empleado e = new Empleado(nombre, rut, cargo);
+    public void agregarEmpleadoASucursal(Sucursal s, String nombre, String rut) {
+        Empleado e = new Empleado(nombre, rut);
         s.agregarEmpleado(e);
         guardarSucursales();
     }
 
-    public List<Sucursal> getSucursales() { return sucursales; }
-    public List<Cliente> getClientes() { return clientes; }
-
     // ===============================
-    // CUENTAS
+    // CUENTAS (API LIMPIA)
     // ===============================
-    public Cuenta crearCuentaCorriente(Cliente cliente, String numero, double linea,
-                                       Sucursal sucursal, Empleado ejecutivo) {
-
-        CuentaCorriente cc = new CuentaCorriente(numero, linea);
-        cc.setSucursal(sucursal);
-        cc.setEjecutivo(ejecutivo);
-
-        cliente.agregarCuenta(cc);
-        guardarClientes();
-
-        generarContrato(cliente, cc, sucursal, ejecutivo);
-        return cc;
-    }
-
-    public Cuenta crearCuentaAhorro(Cliente cliente, String numero, double tasa,
-                                    Sucursal sucursal, Empleado ejecutivo) {
+    public Cuenta crearCuentaAhorro(
+            Cliente cliente,
+            double saldoInicial,
+            Sucursal sucursal,
+            Empleado ejecutivo
+    ) {
+        String numero = generarNumeroCuenta();
+        double tasa = 0.01;
 
         CuentaAhorro ca = new CuentaAhorro(numero, tasa);
         ca.setSucursal(sucursal);
         ca.setEjecutivo(ejecutivo);
+        ca.setSaldo(saldoInicial);
 
         cliente.agregarCuenta(ca);
         guardarClientes();
-
         generarContrato(cliente, ca, sucursal, ejecutivo);
+
         return ca;
     }
 
-    public Cuenta crearCuentaRut(Cliente cliente, String numero,
-                                 Sucursal sucursal, Empleado ejecutivo) {
+    public Cuenta crearCuentaCorriente(
+            Cliente cliente,
+            double saldoInicial,
+            Sucursal sucursal,
+            Empleado ejecutivo
+    ) {
+        String numero = generarNumeroCuenta();
+        double lineaCredito = 0;
+
+        CuentaCorriente cc = new CuentaCorriente(numero, lineaCredito);
+        cc.setSucursal(sucursal);
+        cc.setEjecutivo(ejecutivo);
+        cc.setSaldo(saldoInicial);
+
+        cliente.agregarCuenta(cc);
+        guardarClientes();
+        generarContrato(cliente, cc, sucursal, ejecutivo);
+
+        return cc;
+    }
+
+    public Cuenta crearCuentaRut(
+            Cliente cliente,
+            double saldoInicial,
+            Sucursal sucursal,
+            Empleado ejecutivo
+    ) {
+        // RUT sin dígito verificador
+        String numero = cliente.getRut().split("-")[0];
 
         CuentaRut cr = new CuentaRut(numero);
         cr.setSucursal(sucursal);
         cr.setEjecutivo(ejecutivo);
+        cr.setSaldo(saldoInicial);
 
         cliente.agregarCuenta(cr);
         guardarClientes();
-
         generarContrato(cliente, cr, sucursal, ejecutivo);
+
         return cr;
+    }
+
+    // ===============================
+    // UTILIDADES
+    // ===============================
+    private String generarNumeroCuenta() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            sb.append((int) (Math.random() * 10));
+        }
+        return sb.toString();
+    }
+
+    public Cuenta buscarCuentaGlobal(String numeroCuenta) {
+        for (Cliente c : clientes) {
+            for (Cuenta cuenta : c.getCuentas()) {
+                if (cuenta.getNumeroCuenta().equals(numeroCuenta)) {
+                    return cuenta;
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean transferir(String origen, String destino, double monto) {
+        Cuenta cOrigen = buscarCuentaGlobal(origen);
+        Cuenta cDestino = buscarCuentaGlobal(destino);
+
+        if (cOrigen == null || cDestino == null) return false;
+
+        if (cOrigen.retirar(monto)) {
+            cDestino.depositar(monto);
+            guardarClientes();
+            return true;
+        }
+        return false;
     }
 
     // ===============================
     // CONTRATO
     // ===============================
-    private void generarContrato(Cliente c, Cuenta cuenta, Sucursal suc, Empleado e) {
+    private void generarContrato(Cliente c, Cuenta cuenta, Sucursal s, Empleado e) {
 
-        String dirName = "contratos";
-        File dir = new File(dirName);
+        File dir = new File("contratos");
         if (!dir.exists()) dir.mkdir();
 
-        String fileName = "ContratoCuenta-" + cuenta.getNumeroCuenta() + ".txt";
-        File archivo = new File(dir, fileName);
+        File archivo = new File(dir, "ContratoCuenta-" + cuenta.getNumeroCuenta() + ".txt");
 
         try (PrintWriter pw = new PrintWriter(new FileWriter(archivo))) {
 
             pw.println("=== CONTRATO DE APERTURA DE CUENTA ===\n");
             pw.println("Cliente: " + c.getNombre() + " (" + c.getRut() + ")");
-            pw.println("Sucursal: " + suc.getCodigo() + " - " + suc.getDireccion());
-            pw.println("Ejecutivo: " + e.getNombre() + " (" + e.getRut() + ")");
+            pw.println("Sucursal: " + s.getCodigo() + " - " + s.getDireccion());
+            pw.println("Ejecutivo: " + e.getNombre());
             pw.println("Tipo de cuenta: " + cuenta.getClass().getSimpleName());
             pw.println("Número de cuenta: " + cuenta.getNumeroCuenta());
+            pw.println("Saldo inicial: " + cuenta.getSaldo());
             pw.println("Fecha: " + java.time.LocalDate.now());
-            pw.println("--------------------------------------");
 
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             ex.printStackTrace();
         }
     }
@@ -160,59 +214,28 @@ public class ControladorBancoEstado implements Serializable {
         guardarObjeto(archivoSucursales, sucursales);
     }
 
-    private List<Cliente> cargarClientes() {
+    protected List<Cliente> cargarClientes() {
         return (List<Cliente>) cargarObjeto(archivoClientes, new ArrayList<>());
     }
 
-    private List<Sucursal> cargarSucursales() {
+    protected List<Sucursal> cargarSucursales() {
         return (List<Sucursal>) cargarObjeto(archivoSucursales, new ArrayList<>());
     }
 
-    private void guardarObjeto(String archivo, Object data) {
+    protected void guardarObjeto(String archivo, Object data) {
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(archivo))) {
             out.writeObject(data);
-        } catch (Exception e) {
-            System.out.println("Error al guardar " + archivo + ": " + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
-    private Object cargarObjeto(String archivo, Object valorPorDefecto) {
+    protected Object cargarObjeto(String archivo, Object def) {
         File f = new File(archivo);
-        if (!f.exists()) return valorPorDefecto;
+        if (!f.exists()) return def;
 
         try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(f))) {
             return in.readObject();
         } catch (Exception e) {
-            System.out.println("Error al cargar " + archivo + ": " + e.getMessage());
-            return valorPorDefecto;
+            return def;
         }
-    }
-
-    public Cuenta buscarCuentaGlobal(String numeroCuenta) {
-        for (Cliente c : clientes) {
-            for (Cuenta cuenta : c.getCuentas()) {
-                if (cuenta.getNumeroCuenta().equals(numeroCuenta)) {
-                    return cuenta;
-                }
-            }
-        }
-        return null; // No la encontró
-    }
-
-    public boolean transferir(String numOrigen, String numDestino, double monto) {
-        Cuenta origen = buscarCuentaGlobal(numOrigen);
-        Cuenta destino = buscarCuentaGlobal(numDestino);
-
-        if (origen == null || destino == null) return false;
-        if (origen == destino) return false; // No transferirse a sí mismo
-
-
-        if (origen.retirar(monto)) {
-            destino.depositar(monto);
-            guardarClientes();
-            return true;
-        }
-
-        return false; // No tenía saldo suficiente
     }
 }

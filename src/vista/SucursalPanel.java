@@ -1,10 +1,10 @@
 package vista;
 
 import controlador.ControladorBancoEstado;
-import modelo.Empleado; // Import necesario
 import modelo.Sucursal;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.util.List;
@@ -12,10 +12,18 @@ import java.util.List;
 public class SucursalPanel extends JPanel {
 
     private ControladorBancoEstado controlador;
-    private DefaultListModel<String> modelSuc;
-    private JList<String> listSuc;
+
+    // Tabla
+    private JTable tableSuc;
+    private DefaultTableModel tableModel;
+
+    // Campos
     private JTextField tfCodigo;
     private JTextField tfDireccion;
+
+    // Labels obligatorio
+    private JLabel lblReqCodigo;
+    private JLabel lblReqDireccion;
 
     public SucursalPanel(ControladorBancoEstado controlador) {
         this.controlador = controlador;
@@ -26,7 +34,9 @@ public class SucursalPanel extends JPanel {
     private void initUI() {
         setLayout(new BorderLayout());
 
-        // --- FORMULARIO (Sin cambios) ---
+        // =========================
+        // FORMULARIO
+        // =========================
         JPanel form = new JPanel(new GridLayout(3, 2, 6, 6));
         form.setBorder(BorderFactory.createTitledBorder("Crear Sucursal"));
 
@@ -34,9 +44,10 @@ public class SucursalPanel extends JPanel {
         tfDireccion = new JTextField();
 
         form.add(new JLabel("Código:"));
-        form.add(tfCodigo);
+        lblReqCodigo = agregarCampoConObligatorio(form, tfCodigo);
+
         form.add(new JLabel("Dirección:"));
-        form.add(tfDireccion);
+        lblReqDireccion = agregarCampoConObligatorio(form, tfDireccion);
 
         JButton btnCrear = new JButton("Crear Sucursal");
         btnCrear.addActionListener(this::onCrearSucursal);
@@ -46,86 +57,77 @@ public class SucursalPanel extends JPanel {
 
         add(form, BorderLayout.NORTH);
 
-        // --- LISTA (Sin cambios) ---
-        modelSuc = new DefaultListModel<>();
-        listSuc = new JList<>(modelSuc);
-        JScrollPane sc = new JScrollPane(listSuc);
+        // =========================
+        // TABLA SUCURSALES
+        // =========================
+        tableModel = new DefaultTableModel(
+                new Object[]{"Código", "Dirección", "Ejecutivos"}, 0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        tableSuc = new JTable(tableModel);
+        tableSuc.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        JScrollPane sc = new JScrollPane(tableSuc);
         sc.setBorder(BorderFactory.createTitledBorder("Sucursales"));
         add(sc, BorderLayout.CENTER);
 
-        // --- BOTONES INFERIORES (Aquí agregamos el nuevo botón) ---
+        // =========================
+        // BOTONES INFERIORES
+        // =========================
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
-        JButton btnAgregarEmpleado = new JButton("Agregar Ejecutivo");
-        btnAgregarEmpleado.addActionListener(e -> agregarEmpleado());
+        JButton btnAdmin = new JButton("Administrar Ejecutivos");
+        btnAdmin.addActionListener(e -> abrirAdminEjecutivos());
 
-        // >>> NUEVO BOTÓN <<<
-        JButton btnVerEjecutivos = new JButton("Ver Ejecutivos");
-        btnVerEjecutivos.addActionListener(e -> verEjecutivos());
-
-        bottom.add(btnAgregarEmpleado);
-        bottom.add(btnVerEjecutivos); // Lo añadimos al panel
-
+        bottom.add(btnAdmin);
         add(bottom, BorderLayout.SOUTH);
+
+        // =========================
+        // LISTENERS VALIDACIÓN
+        // =========================
+        addDocumentListener(tfCodigo, lblReqCodigo);
+        addDocumentListener(tfDireccion, lblReqDireccion);
     }
 
-    // ===================================
-    // NUEVO MÉTODO: VER EJECUTIVOS
-    // ===================================
-    private void verEjecutivos() {
-        int idx = listSuc.getSelectedIndex();
-        if (idx < 0) {
-            JOptionPane.showMessageDialog(this, "Selecciona una sucursal de la lista.");
-            return;
-        }
-
-        // Obtener la sucursal seleccionada
-        Sucursal s = controlador.getSucursalesActualizadas().get(idx);
-        List<Empleado> lista = s.getEmpleados();
-
-        if (lista.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "La sucursal " + s.getCodigo() + " no tiene ejecutivos.");
-            return;
-        }
-
-        // Construir el mensaje con la lista de nombres
-        StringBuilder sb = new StringBuilder();
-        sb.append("Ejecutivos en Sucursal ").append(s.getCodigo()).append(":\n\n");
-
-        for (Empleado emp : lista) {
-            sb.append("- ").append(emp.getNombre())
-                    .append(" (RUT: ").append(emp.getRut()).append(")")
-                    .append(" - Cargo: ").append(emp.getCargo())
-                    .append("\n");
-        }
-
-        // Mostrar en un popup
-        JOptionPane.showMessageDialog(this, new JTextArea(sb.toString()));
-    }
-
-    // ===================================
+    // =========================
     // CREAR SUCURSAL
-    // ===================================
+    // =========================
     private void onCrearSucursal(ActionEvent ev) {
-        String codigo = tfCodigo.getText().trim();
-        String direccion = tfDireccion.getText().trim();
 
-        if (codigo.isEmpty() || direccion.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Completa código y dirección.");
+        boolean valido = true;
+        valido &= validarCampo(tfCodigo, lblReqCodigo);
+        valido &= validarCampo(tfDireccion, lblReqDireccion);
+
+        if (!valido) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Debes completar todos los campos obligatorios.",
+                    "Campos obligatorios",
+                    JOptionPane.WARNING_MESSAGE
+            );
             return;
         }
 
-        controlador.crearSucursal(codigo, direccion);
-        tfCodigo.setText("");
-        tfDireccion.setText("");
+        controlador.crearSucursal(
+                tfCodigo.getText().trim(),
+                tfDireccion.getText().trim()
+        );
+
+        limpiarFormulario();
         cargarSucursales();
     }
 
-    // ===================================
-    // AGREGAR EMPLEADO
-    // ===================================
-    private void agregarEmpleado() {
-        int idx = listSuc.getSelectedIndex();
+    // =========================
+    // ADMINISTRAR EJECUTIVOS
+    // =========================
+    private void abrirAdminEjecutivos() {
+
+        int idx = tableSuc.getSelectedRow();
         if (idx < 0) {
             JOptionPane.showMessageDialog(this, "Selecciona una sucursal.");
             return;
@@ -133,32 +135,92 @@ public class SucursalPanel extends JPanel {
 
         Sucursal s = controlador.getSucursalesActualizadas().get(idx);
 
-        String nombre = JOptionPane.showInputDialog(this, "Nombre del empleado:");
-        if (nombre == null || nombre.trim().isEmpty()) return;
+        JDialog dialog = new JDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Ejecutivos - Sucursal " + s.getCodigo(),
+                Dialog.ModalityType.APPLICATION_MODAL
+        );
 
-        String rut = JOptionPane.showInputDialog(this, "RUT del empleado:");
-        if (rut == null || rut.trim().isEmpty()) return;
+        dialog.setContentPane(new AdministrarEjecutivosPanel(controlador, s));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
 
-        String cargo = JOptionPane.showInputDialog(this, "Cargo:");
-        if (cargo == null || cargo.trim().isEmpty()) return;
-
-        controlador.agregarEmpleadoASucursal(s, nombre, rut, cargo);
-        JOptionPane.showMessageDialog(this, "Empleado agregado.");
-        cargarSucursales(); // Recargamos para actualizar el contador de empleados
+        cargarSucursales(); // refresca contador
     }
 
-    // ===================================
+    // =========================
     // CARGAR SUCURSALES
-    // ===================================
+    // =========================
     void cargarSucursales() {
-        modelSuc.clear();
+        tableModel.setRowCount(0);
+
         List<Sucursal> sucursales = controlador.getSucursalesActualizadas();
 
         for (Sucursal s : sucursales) {
-            modelSuc.addElement(
-                    s.getCodigo() + " - " + s.getDireccion() +
-                            " (Ejecutivos: " + s.getEmpleados().size() + ")"
-            );
+            tableModel.addRow(new Object[]{
+                    s.getCodigo(),
+                    s.getDireccion(),
+                    s.getEmpleados().size()
+            });
         }
+    }
+
+    // =========================
+    // VALIDACIONES
+    // =========================
+    private boolean validarCampo(JTextField campo, JLabel label) {
+        if (campo.getText().trim().isEmpty()) {
+            label.setForeground(Color.RED);
+            return false;
+        } else {
+            label.setForeground(Color.GRAY);
+            return true;
+        }
+    }
+
+    private void addDocumentListener(JTextField field, JLabel label) {
+        field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                validarCampo(field, label);
+            }
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                validarCampo(field, label);
+            }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                validarCampo(field, label);
+            }
+        });
+    }
+
+    // =========================
+    // UI HELPERS
+    // =========================
+    private JLabel agregarCampoConObligatorio(JPanel form, JTextField campo) {
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+        JLabel obligatorio = new JLabel("* obligatorio");
+        obligatorio.setFont(new Font("Arial", Font.PLAIN, 10));
+        obligatorio.setForeground(Color.RED);
+        obligatorio.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        campo.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        panel.add(campo);
+        panel.add(Box.createVerticalStrut(2));
+        panel.add(obligatorio);
+
+        form.add(panel);
+        return obligatorio;
+    }
+
+    private void limpiarFormulario() {
+        tfCodigo.setText("");
+        tfDireccion.setText("");
+
+        lblReqCodigo.setForeground(Color.RED);
+        lblReqDireccion.setForeground(Color.RED);
     }
 }

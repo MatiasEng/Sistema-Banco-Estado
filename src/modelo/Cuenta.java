@@ -55,4 +55,7 @@ public abstract class Cuenta implements Serializable {
     public void setEjecutivo(Empleado ejecutivo) {
         this.ejecutivo = ejecutivo;
     }
+    public void setSaldo(double newSaldo) {
+        this.saldo = newSaldo;
+    }
 }
