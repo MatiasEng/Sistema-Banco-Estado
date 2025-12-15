@@ -25,7 +25,7 @@ public class MainFrame extends JFrame {
 
         ImageIcon logoIcon = null;
         try {
-            ImageIcon originalIcon = new ImageIcon("Logo_Banco_Estado.png");
+            ImageIcon originalIcon = new ImageIcon("src/icons/Logo_Banco_Estado.png");
 
             // Verificar si cargó la imagen
             if (originalIcon.getIconWidth() > 0) {
