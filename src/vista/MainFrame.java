@@ -79,6 +79,8 @@ public class MainFrame extends JFrame {
             if (comp instanceof CuentaPanel cup) {
                 cup.cargarClientes();
                 cup.cargarSucursales();
+
+                cup.refrescarTabla();
             }
         });
 

@@ -212,7 +212,7 @@ public class CuentaPanel extends JPanel {
     // =========================
     // REFRESCAR TABLA
     // =========================
-    private void refrescarTabla() {
+    public void refrescarTabla() {
         tableModel.setRowCount(0);
 
         List<Cliente> clientes = controlador.getClientesActualizados();

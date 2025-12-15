@@ -122,6 +122,7 @@ public class AdministrarEjecutivosPanel extends JPanel {
 
         if (confirm == JOptionPane.YES_OPTION) {
             sucursal.getEmpleados().remove(idx);
+            controlador.guardarSucursales();
             cargarEjecutivos();
         }
     }
