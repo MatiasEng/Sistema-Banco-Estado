@@ -7,7 +7,7 @@ El sistema permite la gestión de clientes, cuentas bancarias y sucursales, junt
 
 ## Requisitos Básicos
 
-- **Java JDK 8 o superior**
+- **Java JDK 23**
 - **IntelliJ IDEA** (Community o Ultimate)
 - Sistema operativo compatible con Java (Windows / Linux / macOS)
 - **Git** instalado (para clonar el repositorio)
@@ -31,7 +31,7 @@ Luego, abrir el proyecto en **IntelliJ IDEA**:
 
 ---
 
-## ⚙️ Configuración en IntelliJ IDEA
+## Configuración en IntelliJ IDEA
 
 1. Verificar el JDK:
 
@@ -48,12 +48,12 @@ Luego, abrir el proyecto en **IntelliJ IDEA**:
 
 ## Ejecución del Programa (Tutorial)
 
-1. En IntelliJ, ubicar la clase principal del sistema (clase que contiene el método `main`).
+1. En IntelliJ, ubicar la clase principal del sistema `MainApp` (clase que contiene el método `main`).
 2. Hacer clic derecho sobre la clase.
-3. Seleccionar **Run 'NombreClase'**.
+3. Seleccionar **Run 'MainApp'**.
 4. El sistema iniciará mostrando la interfaz gráfica (Java Swing).
 
-> 💡 En ejecuciones posteriores, IntelliJ permite iniciar el sistema desde el botón **Run ▶**.
+> En ejecuciones posteriores, IntelliJ permite iniciar el sistema desde el botón **Run ▶**.
 
 ---
 
