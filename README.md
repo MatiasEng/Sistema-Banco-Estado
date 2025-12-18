@@ -36,7 +36,7 @@ Luego, abrir el proyecto en **IntelliJ IDEA**:
 1. Verificar el JDK:
 
    * Ir a **File → Project Structure → Project**
-   * Seleccionar **Project SDK: Java 8 (o superior)**
+   * Seleccionar **Project SDK: Java 23 (o superior)**
 
 2. Confirmar estructura del proyecto:
 
